@@ -14,12 +14,12 @@
 @interface RLPageControl ()
 {
 @private
-
+    
     NSUInteger _currentPage;
     NSUInteger _numberOfPages;
-
+    
     BOOL _hidesForSinglePage;
-
+    
     RLDrawIndicatorBlock _indicatorDrawBlock;
 }
 
@@ -39,7 +39,7 @@
     self.numberOfPages = 0;
     self.hidesForSinglePage = NO;
     self.opaque = NO;
-
+    
     [self setIndicatorDrawBlock:^(CGContextRef context, NSUInteger indicatorIndex, BOOL isHighlighted){
         if (isHighlighted) {
             UIBezierPath *ovalPath = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, 8, 8)];
@@ -51,15 +51,15 @@
             [ovalPath fill];
         }
     }];
-
-
+    
+    
     UITapGestureRecognizer *tapGuesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(_userDidTap:)];
     UISwipeGestureRecognizer *leftSwipeGuesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(_userDidSwipeLeft:)];
     UISwipeGestureRecognizer *rightSwipeGuesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(_userDidSwipeRight:)];
-
+    
     [leftSwipeGuesture setDirection:UISwipeGestureRecognizerDirectionLeft];
     [rightSwipeGuesture setDirection:UISwipeGestureRecognizerDirectionRight];
-
+    
     [self addGestureRecognizer:tapGuesture];
     [self addGestureRecognizer:leftSwipeGuesture];
     [self addGestureRecognizer:rightSwipeGuesture];
@@ -68,20 +68,20 @@
 - (id)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
-
+    
     if (self)
         [self _sharedInit];
-
+    
     return self;
 }
 
 - (id)initWithCoder:(NSCoder *)aDecoder
 {
     self = [super initWithCoder:aDecoder];
-
+    
     if (self)
         [self _sharedInit];
-
+    
     return self;
 }
 
@@ -91,18 +91,35 @@
 
 - (void)setCurrentPage:(NSUInteger)currentPage
 {
+    currentPage = [self _limitPageNumber:currentPage];
+    
     if (currentPage == _currentPage)
         return;
-
+    
     _currentPage = currentPage;
     [self setNeedsDisplay];
+}
+
+- (NSUInteger)_limitPageNumber:(NSUInteger)page {
+    
+    if (self.numberOfPages == 0)
+        return 0;
+    
+    NSInteger currentPageSigned = (NSInteger) page; // Assumes numberOfPages does not exceed NSIntegerMax
+    if (currentPageSigned < 0)
+        return 0;
+    
+    if (page >= self.numberOfPages)
+        return self.numberOfPages - 1;
+    
+    return page;
 }
 
 - (void)setNumberOfPages:(NSUInteger)numberOfPages
 {
     if (numberOfPages == _numberOfPages)
         return;
-
+    
     _numberOfPages = numberOfPages;
     [self setNeedsDisplay];
 }
@@ -111,7 +128,7 @@
 {
     if (hidesForSinglePage == _hidesForSinglePage)
         return;
-
+    
     _hidesForSinglePage = hidesForSinglePage;
     [self setNeedsDisplay];
 }
@@ -132,24 +149,24 @@
 {
     CGFloat midX = CGRectGetMidX(self.bounds);
     CGPoint touchLocation = [sender locationInView:self];
-
+    
     if (touchLocation.x < midX)
-        [self setCurrentPage:MAX(self.currentPage - 1, 0)];
+        self.currentPage--;
     else
-        [self setCurrentPage:MIN(self.currentPage + 1, self.numberOfPages - 1)];
-
+        self.currentPage++;
+    
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 }
 
 - (void)_userDidSwipeLeft:(id)sender
 {
-    [self setCurrentPage:MAX(self.currentPage - 1, 0)];
+    self.currentPage--;
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 }
 
 - (void)_userDidSwipeRight:(id)sender
 {
-    [self setCurrentPage:MIN(self.currentPage + 1, self.numberOfPages - 1)];
+    self.currentPage++;
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 }
 
@@ -157,19 +174,19 @@
 {
     if (self.hidesForSinglePage && self.numberOfPages == 1)
         return;
-
+    
     CGContextRef context = UIGraphicsGetCurrentContext();
-
+    
     CGSize size = [self sizeForNumberOfPages:self.numberOfPages];
     CGFloat startDrawX = CGRectGetMidX(self.bounds) - size.width / 2;
-
+    
     CGContextTranslateCTM(context, startDrawX, 0);
-
+    
     for (int i = 0; i < self.numberOfPages; i++)
     {
         if (i > 0)
             CGContextTranslateCTM(context, SIZE_OF_INDICATOR, 0);
-
+        
         CGContextSaveGState(context);
         _indicatorDrawBlock(context, i, self.currentPage == i);
         CGContextRestoreGState(context);
